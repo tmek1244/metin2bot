@@ -1,7 +1,7 @@
-import cv2 as cv
-import matplotlib.pyplot as plt
+import cv2
 import numpy as np
-import random as rng
+from mss import mss
+import time
 
 
 # COLORS IN HSV
@@ -63,75 +63,66 @@ def _group_rectangles(rec):
 
 
 def viewImage(image):
-    cv.namedWindow('Display', cv.WINDOW_NORMAL)
-    cv.imshow('Display', image)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    cv2.namedWindow('Display', cv2.WINDOW_NORMAL)
+    cv2.imshow('Display', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 def mark_objects(test, colors):
-    hsv_img = cv.cvtColor(test, cv.COLOR_BGR2HSV)
+    hsv_img = cv2.cvtColor(test, cv2.COLOR_BGR2HSV)
     # viewImage(hsv_img)
-    # color_0 = cv.cvtColor(np.uint8([[colors[0]]]),cv.COLOR_RGB2HSV)
-    # color_1 = cv.cvtColor(np.uint8([[colors[1]]]),cv.COLOR_RGB2HSV)
+    # color_0 = cv2.cvtColor(np.uint8([[colors[0]]]),cv2.COLOR_RGB2HSV)
+    # color_1 = cv2.cvtColor(np.uint8([[colors[1]]]),cv2.COLOR_RGB2HSV)
     # print(colors[0], colors[1])
-    curr_mask = cv.inRange(hsv_img, colors[0], colors[1])
+    curr_mask = cv2.inRange(hsv_img, colors[0], colors[1])
     # viewImage(curr_mask)
     hsv_img[curr_mask > 0] = (255, 255, 255)
     hsv_img[curr_mask == 0] = (0, 0, 0)
-    RGB_again = cv.cvtColor(hsv_img, cv.COLOR_HSV2RGB)
-    gray = cv.cvtColor(RGB_again, cv.COLOR_RGB2GRAY)
-    _, threshold = cv.threshold(gray, 90, 255, 0)
-    contours, _ =  cv.findContours(threshold,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
+    RGB_again = cv2.cvtColor(hsv_img, cv2.COLOR_HSV2RGB)
+    gray = cv2.cvtColor(RGB_again, cv2.COLOR_RGB2GRAY)
+    _, threshold = cv2.threshold(gray, 90, 255, 0)
+    contours, _ =  cv2.findContours(threshold,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     # viewImage(hsv_img)
-    areas = sorted(contours, key=cv.contourArea, reverse=True)
+    areas = sorted(contours, key=cv2.contourArea, reverse=True)
     filtered_contours = areas[:25]
-    rectangles = [cv.boundingRect(c) for c in filtered_contours]
+    rectangles = [cv2.boundingRect(c) for c in filtered_contours]
     rectangles = _group_rectangles(rectangles)
     # print(rectangles)
     for rectangle in rectangles:
         x,y,w,h = rectangle
         if w*h > 300:
-            cv.rectangle(test,(x,y),(x+w,y+h),(0,255,0),1)
+            cv2.rectangle(test,(x,y),(x+w,y+h),(0,255,0),1)
 
 
-def mark_metins(path):
-    test = cv.imread(path)
+def mark_metins(image):
+    # test = cv2.imread(path)
     for metin_color in metins_colors:
-        mark_objects(test, metin_color)
+        mark_objects(image, metin_color)
 
-    viewImage(test)
+    # viewImage(image)
+    cv2.imshow('screen', image)
 
 
 def main():
-    for i in range(1, 12):
-        mark_metins(f'images/{i}.png')
-    # test = cv.imread('images/8.png')
-    # hsv_img = cv.cvtColor(test, cv.COLOR_RGB2HSV)
-    # curr_mask = cv.inRange(hsv_img, metin_lv20[0], metin_lv20[1])
-    # res = cv.bitwise_and(hsv_img, hsv_img, mask = curr_mask)
-    # # viewImage(res)
-    # #
-    # hsv_img[curr_mask > 0] = (metin_lv20[1])
-    # hsv_img[curr_mask == 0] = (0, 0, 0)
-    # # viewImage(hsv_img) ## 2
-    # # ## converting the HSV image to Gray inorder to be able to apply 
-    # # ## contouring
-    # RGB_again = cv.cvtColor(hsv_img, cv.COLOR_HSV2RGB)
-    # gray = cv.cvtColor(RGB_again, cv.COLOR_RGB2GRAY)
-    # # viewImage(gray) ## 3
-    # # # res[curr_mask > 0] = ([255, 255, 255])
-    # _, threshold = cv.threshold(gray, 90, 255, 0)
-    
-    # # # viewImage(threshold) ## 4
-    # contours, _ =  cv.findContours(threshold,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
-  
-    # c = max(contours, key = cv.contourArea)
-    # x,y,w,h = cv.boundingRect(c)
+    # for i in range(1, 12):
+    #     mark_metins(f'images/{i}.png')
+    bounding_box = {'top': 100, 'left': 0, 'width': 1700, 'height': 900}
 
-    # cv.rectangle(test,(x,y),(x+w,y+h),(0,255,0),2)
- 
-    # viewImage(test)
+    sct = mss()
+
+    while True:
+        last_time = time.time()
+        sct_img = sct.grab(bounding_box)
+        mark_metins(np.array(sct_img))
+        # cv2.imshow('screen', np.array(sct_img))
+
+        if (cv2.waitKey(1) & 0xFF) == ord('q'):
+            cv2.destroyAllWindows()
+            break
+            
+        # print("fps: {}".format(1 / (time.time() - last_time)))
+
 
 if __name__ == '__main__':
     main()
